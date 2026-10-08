@@ -266,9 +266,9 @@
 <body>
 
 <div class="wrap">
-  <nav class="tabs no-print" role="tablist" aria-label="Views">
+  <nav class="tabs no-print" role="tablist" aria-label="Views" hidden>
     <button type="button" role="tab" id="tabForm" aria-selected="true">New canvass</button>
-    <button type="button" role="tab" id="tabSum" aria-selected="false">Summary <span class="count" id="sumCount">0</span></button>
+    <button type="button" role="tab" id="tabSum" aria-selected="false" hidden>Summary <span class="count" id="sumCount">0</span></button>
   </nav>
   <div class="no-print" id="accessBar" hidden style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 16px;padding:12px 16px;border:1px solid var(--grain);background:var(--grain-soft);border-radius:12px">
     <label for="accessCode" style="font-weight:600;font-size:13px">Access code</label>
@@ -434,7 +434,7 @@
             <button type="button" class="btn primary" id="newBtn" style="padding:10px 16px;font-size:14px">New canvass</button>
             <button type="button" class="btn" id="copyBtn" style="grid-column:span 2">Copy submission data</button>
             <button type="button" class="btn" id="dlBtn" style="grid-column:span 2" hidden>Download submission (.json)</button>
-            <button type="button" class="btn ghost" id="toSum" style="grid-column:span 2">See all canvasses &rarr;</button>
+            <button type="button" class="btn ghost" id="toSum" style="grid-column:span 2" hidden>See all canvasses &rarr;</button>
           </div>
           <details><summary>Show submission data</summary><textarea id="recBox" readonly aria-label="Submission data"></textarea></details>
           <p id="doneNote">This form does not send anything on its own. Copy or download the submission data and send it to Vienovo Procurement together with the COA file.</p>
@@ -814,6 +814,7 @@
   }
   function doSubmit(mode){
     if(locked&&mode!=="submitted")return;
+    if(SHEETED&&!getCode()){showAccess("Enter the access code to submit canvasses.",true);toast("Enter the access code first.","err");$("#accessCode").focus();return}
     attempted=true;coaKey="";update();
     var n=Object.keys(errors).length;
     if(n){
@@ -916,7 +917,7 @@
     return Object.keys(m).map(function(k){return m[k]});
   }
   function setShareNote(ok){
-    $("#doneNote").textContent=ok?"Your canvass was also sent to the shared Vienovo summary. You can copy the data below for your own records."
+    $("#doneNote").textContent=ok?"Your canvass was sent to Vienovo Procurement. You can copy the data below for your own records."
       :"This form could not send your canvass automatically. Copy or download the submission data and send it to Vienovo Procurement together with the COA file.";
   }
   function parseCsv(t){
@@ -996,9 +997,9 @@
   }
   async function initShared(){
     if(SHEETED){
-      $("#tabSum").hidden=false;$("#toSum").hidden=false;$("#liveNote").hidden=false;
+      /* Monitoring happens in the Google Sheet, so the Summary tab stays hidden. */
       document.querySelector(".imp").hidden=true;
-      pullSheet();setInterval(function(){if(!document.hidden)pullSheet()},15000);
+      if(getCode())pullSheet();else showAccess("Enter the access code to submit canvasses.",false);
       return;
     }
     if(!window.claude||!window.claude.use)return;
