@@ -270,6 +270,12 @@
     <button type="button" role="tab" id="tabForm" aria-selected="true">New canvass</button>
     <button type="button" role="tab" id="tabSum" aria-selected="false">Summary <span class="count" id="sumCount">0</span></button>
   </nav>
+  <div class="no-print" id="accessBar" hidden style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 16px;padding:12px 16px;border:1px solid var(--grain);background:var(--grain-soft);border-radius:12px">
+    <label for="accessCode" style="font-weight:600;font-size:13px">Access code</label>
+    <input class="inp" id="accessCode" type="password" autocomplete="off" placeholder="Enter the code from Vienovo Procurement" style="flex:1;min-width:200px;width:auto">
+    <button type="button" class="btn primary" id="accessSave" style="padding:10px 16px;font-size:14px">Save code</button>
+    <span id="accessMsg" style="flex-basis:100%;font-size:12.5px;color:var(--muted)">Needed to submit and to view the Summary.</span>
+  </div>
   <form id="form" novalidate>
     <header class="head">
       <div class="head-main">
@@ -444,7 +450,7 @@
         <div><p class="eyebrow">Vienovo PH &middot; Raw Materials Procurement</p><h1>Canvass Summary</h1></div>
       </div>
     </header>
-    <p class="saved no-print" id="liveNote" hidden style="text-align:left;margin:-8px 0 16px">Canvasses submitted from this page appear here automatically.</p>
+    <p class="saved no-print" id="liveNote" hidden style="text-align:left;margin:-8px 0 16px">Canvasses submitted from this page by signed-in teammates appear here automatically.</p>
     <div class="kpis" id="kpis"></div>
     <div class="tools">
       <div class="field"><label for="fQ">Search</label><input class="inp" id="fQ" type="search" placeholder="Canvass no., brand, supplier, name"></div>
@@ -505,17 +511,11 @@
   var COUNTRIES=["Philippines","Argentina","Australia","Belgium","Brazil","Canada","China","France","Germany","India","Indonesia","Japan","Malaysia","Netherlands","New Zealand","Paraguay","South Korea","Spain","Thailand","Ukraine","United States","Vietnam","Other"];
   var VAT=0.12, KEY="vienovo-canvass-draft", MAX_MB=10;
   /* Paste the Google Apps Script web app URL here (see SETUP-GOOGLE-SHEET.md). Works in a plain .html file, no Claude account needed. */
-  var SHEET_URL="https://script.google.com/macros/s/AKfycbwK_EYStouMJG-L_eKvymgJRBgeRQg0tCknrw3tTiqML8XMr9uLXDGYXD9OmkPG-q1lMA/exec";
+  var SHEET_URL="https://script.google.com/macros/s/AKfycbxIUEHibbjrO6yoeVnOlJsAFe1KcQF4JVjXsd34vlz4iUUHbY0fcLKA032rhK94kcwfTw/exec";
   /* No-Apps-Script option: a Google Form receives submissions, the linked Sheet is published as CSV (see SETUP-GOOGLE-FORM.md). */
   var FORM_URL="";   /* https://docs.google.com/forms/d/e/.../formResponse */
   var FORM_ENTRY=""; /* entry.1234567890 */
   var CSV_URL="";    /* https://docs.google.com/spreadsheets/d/e/.../pub?output=csv */
-  /* Admin access: open the page once as  .../index.html#admin=YOUR_KEY  (key from the Apps Script ADMIN_KEY property). Everyone else can only submit. */
-  var ADMIN_KEY="";
-  try{var hm=(location.hash||"").match(/admin=([^&]+)/);if(hm){sessionStorage.setItem("vienovo-admin",decodeURIComponent(hm[1]));history.replaceState(null,"",location.pathname+location.search)}ADMIN_KEY=sessionStorage.getItem("vienovo-admin")||""}catch(e){}
-  var TOKKEY="vienovo-canvass-tokens", tokMem={};
-  /* Per-canvass secret kept in this browser; lets the supplier update their own canvass but nobody else's. */
-  function tokenFor(r){var m=tokMem;try{m=JSON.parse(localStorage.getItem(TOKKEY)||"{}")}catch(e){}if(!m[r]){m[r]=rnd(32,"abcdefghijklmnopqrstuvwxyz0123456789");tokMem[r]=m[r];try{localStorage.setItem(TOKKEY,JSON.stringify(m))}catch(e){}}return m[r]}
   var FORMED=/^https:\/\/docs\.google\.com\/forms\//.test(FORM_URL)&&/^entry\.\d+$/.test(FORM_ENTRY)&&/^https:\/\/docs\.google\.com\/spreadsheets\//.test(CSV_URL);
   var SHEETED=/^https:\/\/script\.google\.com\//.test(SHEET_URL)||FORMED;
   var HOSTED=!!window.claude; // the claude.ai viewer blocks printing and file downloads
@@ -536,8 +536,7 @@
   function num(v,d){return new Intl.NumberFormat("en-PH",{maximumFractionDigits:d==null?2:d}).format(v||0)}
   function fileSize(b){return b>1048576?(b/1048576).toFixed(1)+" MB":Math.max(1,Math.round(b/1024))+" KB"}
   function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
-  function makeRef(){var d=new Date();return "CS-"+d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+"-"+rnd(6,"ABCDEFGHJKLMNPQRSTUVWXYZ23456789")}
-  function rnd(n,al){var a=new Uint32Array(n),o="";(window.crypto||{getRandomValues:function(x){for(var i=0;i<x.length;i++)x[i]=Math.random()*4294967296}}).getRandomValues(a);for(var i=0;i<n;i++)o+=al[a[i]%al.length];return o}
+  function makeRef(){var d=new Date();return "CS-"+d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+"-"+Math.floor(1000+Math.random()*9000)}
   function whLabel(id){var w=WH.filter(function(x){return x.id===id})[0];return w?w.label:""}
   function typeLabel(id){var t=TYPES.filter(function(x){return x.id===id})[0];return t?t.label:""}
   var I={
@@ -939,13 +938,25 @@
       remote=Object.keys(m).map(function(k){return m[k]});renderSummary();return true;
     }catch(e){return false}
   }
+  /* Shared access code: stored in this browser and sent with every Sheet request. */
+  var CODE_KEY="vienovo-canvass-code";
+  function getCode(){try{return localStorage.getItem(CODE_KEY)||""}catch(e){return ""}}
+  function showAccess(msg,bad){
+    var bar=$("#accessBar");bar.hidden=false;
+    var m=$("#accessMsg");m.textContent=msg;m.style.color=bad?"var(--danger)":"var(--muted)";
+  }
+  $("#accessSave").addEventListener("click",function(){
+    var v=$("#accessCode").value.trim();if(!v)return showAccess("Enter the access code first.",true);
+    try{localStorage.setItem(CODE_KEY,v)}catch(e){}
+    $("#accessBar").hidden=true;$("#accessCode").value="";pullSheet();toast("Access code saved");
+  });
   async function pullSheet(){
     if(FORMED)return pullForm();
     try{
-      var res=await fetch(SHEET_URL+(SHEET_URL.indexOf("?")>-1?"&":"?")+"key="+encodeURIComponent(ADMIN_KEY)+"&t="+Date.now());
+      var res=await fetch(SHEET_URL+(SHEET_URL.indexOf("?")>-1?"&":"?")+"key="+encodeURIComponent(getCode())+"&t="+Date.now());
       var j=await res.json();
-      if(!j.admin)return false;
-      if(!isAdmin){isAdmin=true;showAdmin()}
+      if(j.error){showAccess(getCode()?"That access code was not accepted. Check it and try again.":"Enter the access code to submit and view the Summary.",!!getCode());return false}
+      $("#accessBar").hidden=true;
       remote=(j.records||[]).filter(validRec);renderSummary();return true;
     }catch(e){return false}
   }
@@ -956,14 +967,10 @@
         /* the published CSV can lag a few minutes, so the note can't wait for it */
         setShareNote(true);setTimeout(pullSheet,5000);return;
       }
-      var tok=tokenFor(rec.ref);
-      await fetch(SHEET_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({record:rec,token:tok,key:ADMIN_KEY})});
+      await fetch(SHEET_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({key:getCode()},rec))});
       await new Promise(function(r){setTimeout(r,2500)});
-      /* the server only confirms whether this exact canvass (ref + token) was stored; it never returns other people's data */
-      var res=await fetch(SHEET_URL+"?check="+encodeURIComponent(rec.ref)+"&token="+encodeURIComponent(tok)+"&key="+encodeURIComponent(ADMIN_KEY)+"&t="+Date.now());
-      var j=await res.json();
-      if(isAdmin)pullSheet();
-      setShareNote(!!j.stored);
+      var ok=await pullSheet()&&remote.some(function(r){return r.ref===rec.ref});
+      setShareNote(ok);
     }catch(e){setShareNote(false)}
   }
   async function shareRecord(rec){
@@ -987,11 +994,10 @@
     var ids=Object.keys(refDoc).map(function(k){return refDoc[k]}).filter(function(v,i,a){return a.indexOf(v)===i});
     for(var i=0;i<ids.length;i++)await shared.db.doc("canvasses/"+ids[i]).delete();
   }
-  function showAdmin(){$("#tabSum").hidden=false;$("#toSum").hidden=false;$("#liveNote").hidden=false}
   async function initShared(){
     if(SHEETED){
+      $("#tabSum").hidden=false;$("#toSum").hidden=false;$("#liveNote").hidden=false;
       document.querySelector(".imp").hidden=true;
-      if(!ADMIN_KEY)return; /* outsiders: submit only, no summary */
       pullSheet();setInterval(function(){if(!document.hidden)pullSheet()},15000);
       return;
     }
@@ -1079,7 +1085,7 @@
     $("#logo2").src=LOGO;
     $("#expPdf").innerHTML=I.print+(HOSTED?" Preview PDF report":" Download PDF report");
     $("#expCsv").hidden=HOSTED;
-    if(HOSTED||SHEETED){$("#tabSum").hidden=true;$("#toSum").hidden=true}
+    if(HOSTED){$("#tabSum").hidden=true;$("#toSum").hidden=true}
   }
   fillFilters();
   initShared();
