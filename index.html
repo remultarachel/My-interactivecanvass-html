@@ -316,7 +316,7 @@
           <header class="sec-h"><div class="sec-t"><span class="step">2</span><div><h2>Commercials &amp; Logistics</h2><p>Supplier, price, volume and delivery</p></div></div><span class="tag">In progress</span></header>
           <div class="g2">
             <div class="field" data-f="supplierName"><label for="supplierName">Supplier's name<span class="req">*</span></label>
-              <input class="inp" id="supplierName" data-k="supplierName" type="text" autocomplete="organization" placeholder="e.g. ABC Agri Trading Corp."><div class="msg" data-msg="supplierName" data-hint="Registered company name on the quotation"></div></div>
+              <select class="inp" id="supplierName" data-k="supplierName"><option value="">Select supplier</option></select><div class="msg" data-msg="supplierName" data-hint="Pick the supplier from the list, as named on the quotation"></div></div>
             <div class="field" data-f="supplierLocation"><label for="supplierLocation">Supplier location / warehouse<span class="req">*</span></label>
               <input class="inp" id="supplierLocation" data-k="supplierLocation" type="text" placeholder="e.g. Harbour Centre Warehouse, Tondo, Manila"><div class="msg" data-msg="supplierLocation" data-hint="Pickup point or the warehouse the supplier ships from"></div></div>
 
@@ -581,7 +581,7 @@
     if(!f.deliveryWarehouse)e.deliveryWarehouse="Choose the receiving warehouse.";
     if(!f.deliveryStart)e.deliveryStart="Pick the delivery start date.";else if(!submitted&&f.deliveryStart<t)e.deliveryStart="Start date can't be in the past.";
     if(!f.deliveryEnd)e.deliveryEnd="Pick the delivery end date.";else if(!submitted&&f.deliveryEnd<t)e.deliveryEnd="End date can't be in the past.";else if(f.deliveryStart&&f.deliveryEnd<f.deliveryStart)e.deliveryEnd="End date must be on or after the start date.";
-    if(!f.supplierName.trim())e.supplierName="Enter the supplier's name.";
+    if(!f.supplierName.trim())e.supplierName="Select the supplier's name.";
     if(!f.supplierLocation.trim())e.supplierLocation="Enter the supplier location or warehouse.";
     if(!f.coaAvailable)e.coaAvailable="Select whether a COA is available.";
     if(f.coaAvailable==="yes"&&!f.coaFile)e.coaFile="Attach the COA file, or set availability to No.";
@@ -601,6 +601,15 @@
       SUBMITTERS.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>'}).join("");
     sel.value=cur;
   }
+  var SUPPLIERS=["ABC Agri Trading Corp.","Sample Supplier A","Sample Supplier B"], supKey=null;
+  function fillSuppliers(){
+    var sel=$("#supplierName"),cur=form.supplierName||"";
+    if(supKey===cur&&sel.value===cur)return;
+    supKey=cur;
+    sel.innerHTML='<option value="">Select supplier</option>'+(cur&&SUPPLIERS.indexOf(cur)<0?'<option value="'+esc(cur)+'">'+esc(cur)+'</option>':"")+
+      SUPPLIERS.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>'}).join("");
+    sel.value=cur;
+  }
   var descKey="";
   function fillDesc(){
     var sel=$("#brand"),t=form.materialType,cur=form.brand||"",key=t+"|"+cur;
@@ -613,7 +622,7 @@
     sel.value=cur;sel.disabled=!t;
   }
   function update(){
-    fillDesc();fillSubmitters();
+    fillDesc();fillSubmitters();fillSuppliers();
     errors=validate(form);
     var today=isoToday();
     var price=parseFloat(form.price)||0, qty=parseFloat(form.quantity)||0, fp=parseFloat(form.finalPrice)||0, hasFinal=fp>0;
